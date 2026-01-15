@@ -17,6 +17,9 @@ from ui.splash import show_splash
 def run_app():
     show_splash()
     choice = show_menu()
+    if choice == "EXIT":
+        print("Exiting Morphy.")
+        return
     path = pick_file()
     dispatch(choice, path)
 
