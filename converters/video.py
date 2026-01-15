@@ -11,15 +11,18 @@ def get_ext(path):
 # func to check ffmpeg ; validation
 def check_ffmpeg():
     try:  # try block
-        result = subprocess.run(  # runs command via subprocess and stores it in result for python
+        subprocess.run(  # runs command via subprocess and stores it in result for python
             ["ffmpeg", "-version"],  # using list to prevent injections
-            stdout=subprocess.PIPE,  # fetch standard output from ffmpeg
-            stderr=subprocess.PIPE,
-            text=True,  # ensure its string and not byte blobs
+            stdout=subprocess.DEVNULL,  # fetch standard output from ffmpeg
+            stderr=subprocess.DEVNULL,
+            check=True,
         )
-        return result.stdout  # returns result
-    except FileNotFoundError:  # error handeling is ffmpeg doesn't exists
-        return "FFmpeg is not installed or not in PATH"
+        return True  # returns result
+    except (
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+    ):  # error handeling is ffmpeg doesn't exists
+        return False
 
 
 # func to display stuff
@@ -29,8 +32,8 @@ def conv_video(path):
 
     ffmpeg_status = check_ffmpeg()  # validation
 
-    if "FFmpeg is not installed" in ffmpeg_status:
-        print(ffmpeg_status)
+    if not ffmpeg_status:
+        print("FFmpeg is not installed or not in PATH")
         return
 
     print("FFmpeg detected.\n")  # else
@@ -38,9 +41,13 @@ def conv_video(path):
     # ask user for settings
     print("Select FPS: 10, 24, 30")  # fps
     fps_input = input("FPS: ").strip()
+    if not fps_input.isdigit():
+        fps_input = "10"  # Default safe value
 
     print("\nSelect Width: 320, 480, 720, 1080")  # res
     width_input = input("Width: ").strip()
+    if not width_input.isdigit():
+        width_input = "480"  # Default safe value
 
     print("\nStarting process...")
 
@@ -64,10 +71,18 @@ def convert_to_gif(path, fps, width):
     name, ext = os.path.splitext(file_name)
 
     output_gif = os.path.join(out_dir, name + ".gif")  # output gif ; video_name + .gif
-    palette_png = os.path.join(out_dir, "palette.png")
+    # Make palette unique to avoid conflicts
+    palette_png = os.path.join(out_dir, f"{name}_palette.png")
 
     # Filters for ffmpeg
     filters = f"fps={fps},scale={width}:-1:flags=lanczos"
+
+    # Common args to reduce duplication
+    run_kwargs = {
+        "check": True,
+        "stdout": subprocess.DEVNULL,  # no logs
+        "stderr": subprocess.STDOUT,
+    }
 
     try:
         print(f"Generating palette for {file_name}...")
@@ -75,9 +90,7 @@ def convert_to_gif(path, fps, width):
         # Step 1: Generate Palette
         subprocess.run(
             ["ffmpeg", "-y", "-i", path, "-vf", f"{filters},palettegen", palette_png],
-            check=True,
-            stdout=subprocess.DEVNULL,  # no logs
-            stderr=subprocess.STDOUT,
+            **run_kwargs,
         )
 
         print(f"Creating GIF...")
@@ -95,9 +108,7 @@ def convert_to_gif(path, fps, width):
                 f"{filters} [x]; [x][1:v] paletteuse",
                 output_gif,
             ],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT,
+            **run_kwargs,
         )
 
         print("Success! GIF created.")
