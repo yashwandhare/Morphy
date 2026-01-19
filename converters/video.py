@@ -1,125 +1,121 @@
-# importing modules as usual
+"""
+video.py - converts video to gif using ffmpeg
+"""
+
 import os
 import subprocess
 
+from rich.console import Console
+from rich.prompt import Prompt
 
-# func to extract path
-def get_ext(path):
-    return os.path.splitext(path)[1].lower()
+from ui.theme import Theme
+
+console = Console()
 
 
-# func to check ffmpeg ; validation
 def check_ffmpeg():
-    try:  # try block
-        subprocess.run(  # runs command via subprocess and stores it in result for python
-            ["ffmpeg", "-version"],  # using list to prevent injections
-            stdout=subprocess.DEVNULL,  # fetch standard output from ffmpeg
+    # verify ffmpeg is installed
+    try:
+        subprocess.run(
+            ["ffmpeg", "-version"],
+            stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True,
         )
-        return True  # returns result
-    except (
-        FileNotFoundError,
-        subprocess.CalledProcessError,
-    ):  # error handeling is ffmpeg doesn't exists
+        return True
+    except (FileNotFoundError, subprocess.CalledProcessError):
         return False
 
 
-# func to display stuff
 def conv_video(path):
-    print("CONVERT YOUR VIDEOS TO GIF")
-    print("checking ffmpeg...")
+    console.rule(f"[bold {Theme.HEADER}]VIDEO TO GIF[/bold {Theme.HEADER}]")
 
-    ffmpeg_status = check_ffmpeg()  # validation
+    # check dependencies
+    with console.status(f"[{Theme.INFO}]Checking FFmpeg...[/{Theme.INFO}]"):
+        if not check_ffmpeg():
+            console.print(
+                f"[bold {Theme.ERROR}]ERROR:[/bold {Theme.ERROR}] FFmpeg is not installed or not in PATH."
+            )
+            return
+        console.print(f"[{Theme.SUCCESS}]✓ FFmpeg detected.[/{Theme.SUCCESS}]")
 
-    if not ffmpeg_status:
-        print("FFmpeg is not installed or not in PATH")
-        return
+    # get conversion settings
+    fps = Prompt.ask(
+        f"[{Theme.HEADER}]Select FPS[/{Theme.HEADER}]",
+        choices=["10", "24", "30"],
+        default="10",
+    )
+    width = Prompt.ask(
+        f"[{Theme.HEADER}]Select Width[/{Theme.HEADER}]",
+        choices=["320", "480", "720", "1080"],
+        default="480",
+    )
 
-    print("FFmpeg detected.\n")  # else
-
-    # ask user for settings
-    print("Select FPS: 10, 24, 30")  # fps
-    fps_input = input("FPS: ").strip()
-    if not fps_input.isdigit():
-        fps_input = "10"  # Default safe value
-
-    print("\nSelect Width: 320, 480, 720, 1080")  # res
-    width_input = input("Width: ").strip()
-    if not width_input.isdigit():
-        width_input = "480"  # Default safe value
-
-    print("\nStarting process...")
-
-    # Call core function with user inputs
-    saved_path = convert_to_gif(path, fps_input, width_input)
-
-    if saved_path:
-        print(f"\n[+] Final Output Saved at: {saved_path}")
+    convert_to_gif(path, fps, width)
 
 
-# func to convert video to gif using ffmpeg
 def convert_to_gif(path, fps, width):
-    # file validation
     if not os.path.isfile(path):
-        print("File not found")
+        console.print(f"[{Theme.ERROR}]File not found[/{Theme.ERROR}]")
         return None
 
-    # basic declarations
+    # define paths
     out_dir = os.path.dirname(path) or "."
-    file_name = os.path.basename(path)
-    name, ext = os.path.splitext(file_name)
-
-    output_gif = os.path.join(out_dir, name + ".gif")  # output gif ; video_name + .gif
-    # Make palette unique to avoid conflicts
+    name = os.path.splitext(os.path.basename(path))[0]
+    output_gif = os.path.join(out_dir, name + ".gif")
     palette_png = os.path.join(out_dir, f"{name}_palette.png")
-
-    # Filters for ffmpeg
     filters = f"fps={fps},scale={width}:-1:flags=lanczos"
 
-    # Common args to reduce duplication
     run_kwargs = {
         "check": True,
-        "stdout": subprocess.DEVNULL,  # no logs
+        "stdout": subprocess.DEVNULL,
         "stderr": subprocess.STDOUT,
     }
 
     try:
-        print(f"Generating palette for {file_name}...")
+        # process with spinner
+        with console.status(
+            f"[bold {Theme.INFO}]Processing (this might take a moment)...[/bold {Theme.INFO}]"
+        ):
+            # generate palette
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    path,
+                    "-vf",
+                    f"{filters},palettegen",
+                    palette_png,
+                ],
+                **run_kwargs,
+            )
+            # generate final gif
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    path,
+                    "-i",
+                    palette_png,
+                    "-lavfi",
+                    f"{filters} [x]; [x][1:v] paletteuse",
+                    output_gif,
+                ],
+                **run_kwargs,
+            )
 
-        # Step 1: Generate Palette
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", path, "-vf", f"{filters},palettegen", palette_png],
-            **run_kwargs,
+        console.print(
+            f"\n[bold {Theme.SUCCESS}]Success![/bold {Theme.SUCCESS}] GIF saved at: {output_gif}"
         )
-
-        print(f"Creating GIF...")
-
-        # Step 2: Use Palette to create GIF
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-i",
-                path,
-                "-i",
-                palette_png,
-                "-lavfi",
-                f"{filters} [x]; [x][1:v] paletteuse",
-                output_gif,
-            ],
-            **run_kwargs,
-        )
-
-        print("Success! GIF created.")
 
     except subprocess.CalledProcessError:
-        print("Error: Conversion failed.")
+        console.print(
+            f"[bold {Theme.ERROR}]Error: Conversion failed.[/bold {Theme.ERROR}]"
+        )
         return None
     finally:
-        # Cleanup: Delete the palette png
+        # cleanup palette
         if os.path.exists(palette_png):
             os.remove(palette_png)
-            print("Cleaned up temporary palette file.")
-
-    return output_gif

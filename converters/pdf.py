@@ -1,125 +1,112 @@
-# importing modules
+"""
+pdf.py - handles pdf and image conversions
+"""
+
 import os
 
-import fitz  # for pdf to img  ; img to pdf conversion
+import fitz
+from rich.console import Console
+from rich.progress import track
+from rich.prompt import Prompt
+from rich.table import Table
+
+from ui.theme import Theme
+
+console = Console()
 
 
-# func to extract the path of input
-def get_ext(path):
-    return os.path.splitext(path)[1].lower()
-
-
-# func to extract user input
 def conv_doc(path):
-    ext = get_ext(path)
+    ext = os.path.splitext(path)[1].lower()
 
-    print("\n CONVERT TO")
-    print("1.PDF (from Image)")
-    print("2.Image (from PDF)")
+    # show menu options
+    console.print(f"\n[bold {Theme.HEADER}]PDF TOOLS[/bold {Theme.HEADER}]")
+    console.print("1. Image -> PDF")
+    console.print("2. PDF -> Images")
 
-    output = input("Enter the option(num): ").strip()
-    IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
-    PDF_EXTS = {".pdf"}
+    choice = Prompt.ask(
+        f"[{Theme.PROMPT}]Select option[/{Theme.PROMPT}]", choices=["1", "2"]
+    )
 
-    if output == "1":
-        # Image → PDF
-        if ext not in IMAGE_EXTS:
-            print("Invalid input: expected an image file")
-            return None
-        return img_to_pdf(path)
-
-    elif output == "2":
-        # PDF → Image
-        if ext not in PDF_EXTS:
-            print("Invalid input: expected a PDF file")
-            return None
-        return pdf_to_img(path)
-
+    # route logic based on file type
+    if choice == "1":
+        if ext not in {".png", ".jpg", ".jpeg", ".webp", ".bmp"}:
+            console.print(
+                f"[{Theme.ERROR}]Invalid file. Select an image.[/{Theme.ERROR}]"
+            )
+            return
+        img_to_pdf(path)
     else:
-        print("Invalid option")
-        return None
+        if ext != ".pdf":
+            console.print(f"[{Theme.ERROR}]Invalid file. Select a PDF.[/{Theme.ERROR}]")
+            return
+        pdf_to_img(path)
 
 
 def img_to_pdf(path):
-    if not os.path.isfile(path):  # validates file path
-        print("File not found")
-        return None
-    # extracts the path dir
-    out_dir = os.path.dirname(path) or "."
-    # extract file name extension & size
-    file_name = os.path.basename(path)
-    name, ext = os.path.splitext(file_name)
-    file_size = os.path.getsize(path)
+    # display file stats
+    file_size = os.path.getsize(path) / 1024
+    table = Table(show_header=False, box=None)
+    table.add_row("File", os.path.basename(path), style=Theme.TEXT)
+    table.add_row("Size", f"{file_size:.2f} KB", style=Theme.TEXT)
+    console.print(table)
 
-    print(f"File name : {file_name}")
-    print(f"Extension : {ext}")
-    print(f"Size      : {file_size / 1024:.2f} KB")
-    # output will be image name + .pdf
-    output_pdf = os.path.join(out_dir, name + ".pdf")
+    # get layout choice
+    console.print(f"\n[bold {Theme.HEADER}]PAGE SIZING[/bold {Theme.HEADER}]")
+    console.print("1. A4 Centered")
+    console.print("2. Original Fit")
+    size_opt = Prompt.ask(
+        f"[{Theme.PROMPT}]Select sizing[/{Theme.PROMPT}]",
+        choices=["1", "2"],
+        default="1",
+    )
 
-    # Ask user for page size preference
-    print("\nPAGE SIZE")
-    print("1. Standard A4 (Centered, Original Size)")
-    print("2. Original Image Size (Fit Page to Image)")
-    size_opt = input("Enter option(num): ").strip()
+    # create pdf
+    with console.status(f"[bold {Theme.INFO}]Building PDF...[/bold {Theme.INFO}]"):
+        out_dir = os.path.dirname(path) or "."
+        name = os.path.splitext(os.path.basename(path))[0]
+        output_pdf = os.path.join(out_dir, name + ".pdf")
 
-    doc = fitz.open()  # creates new empty pdf doc in memory
-    img = fitz.open(path)  # open img file as a single page doc
+        doc = fitz.open()
+        img = fitz.open(path)
+        rect = img[0].rect
 
-    rect = img[0].rect  # image wrapped in page 0 in rectangle
+        if size_opt == "1":
+            page = doc.new_page(width=595, height=842)
+            x = (595 - rect.width) / 2
+            y = (842 - rect.height) / 2
+            page.insert_image(
+                fitz.Rect(x, y, x + rect.width, y + rect.height), filename=path
+            )
+        else:
+            page = doc.new_page(width=rect.width, height=rect.height)
+            page.insert_image(rect, filename=path)
 
-    if size_opt == "1":
-        # A4 size is 595 x 842 points
-        page = doc.new_page(width=595, height=842)
+        doc.save(output_pdf)
+        doc.close()
+        img.close()
 
-        # Calculate coordinates to center the image (Original Size)
-        # x = (PageWidth - ImageWidth) / 2
-        x = (595 - rect.width) / 2
-        y = (842 - rect.height) / 2
-
-        # Insert image at calculated position without scaling
-        page.insert_image(
-            fitz.Rect(x, y, x + rect.width, y + rect.height), filename=path
-        )
-    else:
-        page = doc.new_page(
-            width=rect.width, height=rect.height
-        )  # new page in pdf with page size = img size
-        page.insert_image(rect, filename=path)  # inserts image into page
-
-    doc.save(output_pdf)  # saves it to disk
-    doc.close()  # removes from memory
-    img.close()
-
-    print(f"Saved as  : {output_pdf}")
-    return output_pdf
+    console.print(f"[bold {Theme.SUCCESS}]✓ Saved:[/bold {Theme.SUCCESS}] {output_pdf}")
 
 
 def pdf_to_img(path):
-    if not os.path.isfile(path):
-        print("File not found")
-        return None
-
     out_dir = os.path.dirname(path) or "."
+    base = os.path.splitext(os.path.basename(path))[0]
 
-    pdf = fitz.open(path)  # opens the file and loads it in memory
-    base = os.path.splitext(os.path.basename(path))[
-        0
-    ]  # extracts file name without extension
-
+    pdf = fitz.open(path)
     output_paths = []
 
-    for i, page in enumerate(pdf):  # iterates over each pdf page , starts at 0 ofc
-        # matrix(3, 3) zooms in 3x (~216 DPI) for higher quality output
-        pix = page.get_pixmap(
-            matrix=fitz.Matrix(3, 3)
-        )  # renders per page into a bitmap
-        img_path = os.path.join(
-            out_dir, f"{base}_page_{i + 1}.png"
-        )  # builds image name ; pdf name + page number from 1 to x + .png
-        pix.save(img_path)  # writes the rendered img to disk ; lossless
+    # loop pages with progress bar
+    for i, page in track(
+        enumerate(pdf),
+        total=len(pdf),
+        description=f"[{Theme.INFO}]Extracting pages...[/{Theme.INFO}]",
+    ):
+        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+        img_path = os.path.join(out_dir, f"{base}_page_{i + 1}.png")
+        pix.save(img_path)
         output_paths.append(img_path)
-        print(f"Saved      : {img_path}")  # status
 
-    pdf.close()  # frees memory
-    return output_paths
+    pdf.close()
+    console.print(
+        f"[bold {Theme.SUCCESS}]✓ Extracted {len(output_paths)} pages.[/bold {Theme.SUCCESS}]"
+    )
