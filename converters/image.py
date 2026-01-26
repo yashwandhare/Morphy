@@ -3,28 +3,46 @@ image.py - shows image info and converts formats
 """
 
 import os
+from io import BytesIO
 
+import cairosvg
 from PIL import Image
+from pillow_heif import register_heif_opener
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
 
 from ui.theme import Theme
 
+# Initialize HEIC support
+register_heif_opener()
 console = Console()
 
 
 def conv_image(path):
+    # Logic to handle SVG reading via BytesIO
+    if path.lower().endswith(".svg"):
+        img_data = cairosvg.svg2png(url=path)
+        img_context = Image.open(BytesIO(img_data))
+    else:
+        img_context = Image.open(path)
+
     # read image details
-    with Image.open(path) as img:
+    with img_context as img:
         table = Table(
             title="Image Metadata",
             show_header=False,
             box=None,
             title_style=f"{Theme.HEADER} bold",
         )
-        table.add_row("Filename", img.filename, style=Theme.TEXT)
-        table.add_row("Format", img.format, style=Theme.TEXT)
+        table.add_row("Filename", os.path.basename(path), style=Theme.TEXT)
+        table.add_row(
+            "Format",
+            getattr(
+                img, "format", "SVG" if path.lower().endswith(".svg") else "Unknown"
+            ),
+            style=Theme.TEXT,
+        )
         table.add_row("Mode", img.mode, style=Theme.TEXT)
         table.add_row("Size", f"{img.size[0]}x{img.size[1]}", style=Theme.TEXT)
         console.print(table)
@@ -56,9 +74,19 @@ def convert_image(path, target_format):
     with console.status(
         f"[bold {Theme.INFO}]Converting to {target_format}...[/bold {Theme.INFO}]"
     ):
-        with Image.open(path) as img:
+        # Logic to handle SVG reading via BytesIO
+        if path.lower().endswith(".svg"):
+            img_data = cairosvg.svg2png(url=path)
+            img_context = Image.open(BytesIO(img_data))
+        else:
+            img_context = Image.open(path)
+
+        with img_context as img:
             # convert to rgb for jpg/webp
-            if img.mode in ["RGBA", "LA", "L"] and target_format in ["JPEG", "WEBP"]:
+            if img.mode in ["RGBA", "LA", "L", "P"] and target_format in [
+                "JPEG",
+                "WEBP",
+            ]:
                 img = img.convert("RGB")
 
             out_ext = (
