@@ -10,7 +10,8 @@
 - [x] PDF tools (image ↔ PDF)
 - [x] Video → GIF conversion (FFmpeg)
 - [x] UI theming and visual polish
-- [ ] Image compression
+- [x] Image compression
+- [x] PDF compression
 - [ ] Non-interactive CLI flags
 - [ ] pip packaging
 - [ ] Versioned releases
@@ -94,15 +95,29 @@
 
 ---
 
-## Phase 5 – Optimization Features (Planned)
+## Phase 5 – Compression Features
 
 **Goal:** Add practical value while keeping scope controlled.
 
-- Image compression
-- Sensible defaults
-- Avoid format or option explosion
+### 5.1 Image Compression
+- Preset levels (Light, Medium, Aggressive)
+- Custom target size in KB
+- Automatic quality optimization via binary search
+- Dimension downscaling when needed
+- Before/after size comparison
 
-**Status:** ⏳ Planned
+**Status:** ✅ Complete
+
+---
+
+### 5.2 PDF Compression
+- Preset levels (Standard, Maximum)
+- Custom target size in KB
+- Structural compression (garbage collection, deflate)
+- Clear warnings when target unreachable
+- Before/after size comparison
+
+**Status:** ✅ Complete
 
 ---
 
