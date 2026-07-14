@@ -4,68 +4,71 @@ Morphy follows a **guided, step-by-step CLI workflow** prioritizing clarity and 
 
 ## Global Workflow
 
-```mermaid
-graph TB
-    Start([Start Morphy]) --> Splash[Splash Screen]
-    Splash --> Menu[Main Menu]
-    Menu --> Choice{Select Operation}
-    
-    Choice -->|Image| ImgFlow[Image Conversion]
-    Choice -->|PDF| PdfFlow[PDF Tools]
-    Choice -->|Video| VidFlow[Video to GIF]
-    Choice -->|Exit| End([Exit])
-    
-    ImgFlow --> File[File Selection]
-    PdfFlow --> File
-    VidFlow --> File
-    
-    File --> Validate{Valid?}
-    Validate -->|No| Error[Show Error]
-    Error --> File
-    Validate -->|Yes| Process[Execute]
-    
-    Process --> Output[Generate Output]
-    Output --> Success[Show Success]
-    Success --> Menu
-    
-    style Start fill:#4A90E2,stroke:#2E5C8A,color:#fff
-    style Menu fill:#9B59B6,stroke:#6C3A80,color:#fff
-    style Choice fill:#50C878,stroke:#2E7D4E,color:#fff
-    style Process fill:#F39C12,stroke:#C87F0A,color:#fff
-    style Success fill:#27AE60,stroke:#1E8449,color:#fff
-    style Error fill:#E74C3C,stroke:#A93226,color:#fff
+```
+start
+  │
+  ├── show splash screen
+  │
+  └── main menu loop
+        │
+        ├── [1] image conversion
+        │     ├── pick file
+        │     ├── show image info (format, size, dimensions)
+        │     ├── choose target format (png/jpg/webp)
+        │     └── convert and save
+        │
+        ├── [2] video → gif
+        │     ├── pick file
+        │     ├── check ffmpeg installed
+        │     ├── choose frame rate (10/24/30)
+        │     ├── choose width (320/480/720/1080)
+        │     └── two-pass ffmpeg conversion
+        │
+        ├── [3] pdf tools
+        │     ├── pick file
+        │     ├── choose direction:
+        │     │     ├── image → pdf (a4 centered or original fit)
+        │     │     └── pdf → images (3x scale, per-page png)
+        │     └── save output
+        │
+        ├── [4] compression
+        │     ├── sub-menu: image or pdf
+        │     │
+        │     ├── image compression
+        │     │     ├── pick file
+        │     │     ├── show image info
+        │     │     ├── choose preset or custom target
+        │     │     ├── compress (binary search for custom)
+        │     │     └── show before/after comparison
+        │     │
+        │     └── pdf compression
+        │           ├── pick file
+        │           ├── show pdf info
+        │           ├── choose preset or custom target
+        │           ├── compress with mupdf
+        │           └── show before/after comparison
+        │
+        ├── [5] markdown → pdf
+        │     ├── pick file
+        │     └── render styled pdf (via weasyprint)
+        │
+        └── [6] exit
 ```
 
-## Operations
+## File Naming
 
-### Image Conversion
-**Formats:** PNG, JPG, WEBP
+all output files follow this pattern:
+- conversion: `{name}_converted.{ext}`
+- compression: `{name}_compressed.{ext}`
+- pdf pages: `{name}_page_{n}.png`
+- markdown: `{name}.pdf`
 
-1. Select image file
-2. View metadata (format, dimensions)
-3. Choose target format
-4. Convert and save with `_converted` suffix
+## Error Handling
 
-### PDF Tools
-
-**Image → PDF**
-- Select image file
-- Choose page mode (A4 or image-sized)
-- Generate PDF
-
-**PDF → Image**
-- Select PDF file
-- Render each page as PNG
-- Save all pages
-
-### Video to GIF
-**Format:** MP4 → GIF
-
-1. Check FFmpeg availability
-2. Select video file
-3. Configure FPS and width
-4. Generate GIF with palette optimization
-5. Cleanup temp files
+- invalid file path → re-prompt
+- unsupported format → show error, return to menu
+- conversion failure → show error message
+- ffmpeg missing → show install prompt
 
 ## Key Features
 

@@ -1,14 +1,20 @@
-### Morphy 
-A terminal-based file conversion tool with a guided CLI workflow, focused on clarity and maintainable CLI design rather than exhaustive format support.
+#### Morphy
 
-It helps convert common file types through a simple, step-by-step interface, without requiring users to remember commands or flags.
+A terminal based file conversion and compression tool.
 
-#### Supported features
-- Image conversion: PNG, JPG, WEBP  
-- Video conversion: video to GIF  
-- PDF conversion: document to images, images to PDF  
-- Image and document compression  
+#### Install
 
-Built using Python with tools such as FFmpeg, Pillow, and PyMuPDF.
+curl -sSL https://raw.githubusercontent.com/yashwandhare/Morphy/main/install.sh | bash
 
-See the `docs/` directory for details.
+#### Run
+
+morphy
+
+#### Optional Dependencies
+
+ffmpeg (needed for video to gif)
+weasyprint (needed for markdown to pdf)
+
+#### Documentation
+
+Check the docs folder for the user manual and architecture details.

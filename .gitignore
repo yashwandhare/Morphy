@@ -1,10 +1,7 @@
-# Python
-__pycache__/
-*.pyc
+# Rust
+/target
+Cargo.lock
 
-# Virtual environments
-venv/
-.env/
 
 # Build artifacts
 build/
@@ -13,3 +10,4 @@ dist/
 
 # OS junk
 .DS_Store
+Thumbs.db

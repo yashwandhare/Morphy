@@ -1,5 +1,0 @@
-rich
-Pillow
-PyMuPDF
-pillow-heif
-cairosvg
