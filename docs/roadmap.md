@@ -4,11 +4,11 @@ This document outlines the planned features and architectural improvements for M
 
 ## Architecture Improvements
 
-- [ ] **File Provider System**: Replace manual path entry with a flexible file acquisition layer (`rfd` for native file picker, CLI path, Drag & Drop, Directory picker, Watch directory).
+- [x] **File Provider System**: Replace manual path entry with a flexible file acquisition layer (`rfd` for native file picker, CLI path, Drag & Drop).
 - [ ] **Complete UI Separation**: UI gathers user input, processing modules execute work (e.g., `compress_image(path, CompressionOptions)`).
-- [ ] **Registry-Based Operations**: Replace hardcoded dispatcher `match` statements with a dynamic operation registry (supporting dynamic menus and automatic capability discovery).
+- [x] **Registry-Based Operations**: Replace hardcoded dispatcher `match` statements with a dynamic operation registry (supporting dynamic menus and automatic capability discovery).
 - [ ] **Smart File Detection**: Detect file type and show supported operations instead of asking for the operation first.
-- [ ] **Natural Language CLI**: Support readable commands like `morphy make image.png webp`.
+- [x] **Natural Language CLI**: Support readable commands like `morphy make image.png webp`.
 - [ ] **Directory Mode**: Allow operations on folders (e.g., `morphy make images/ webp`).
 - [ ] **Watch Mode**: Watch a directory and process newly added files (e.g., `morphy watch Downloads webp`).
 - [ ] **Smart File Suggestions**: Suggest nearby matches if a requested file cannot be found (e.g., "Did you mean resume.docx?").
