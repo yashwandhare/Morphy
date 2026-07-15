@@ -1,3 +1,3 @@
-/// core module - dispatcher and routing logic
+/// core module - registry and routing logic
 
-pub mod dispatcher;
+pub mod registry;
