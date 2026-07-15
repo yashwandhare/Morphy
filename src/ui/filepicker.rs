@@ -10,11 +10,22 @@ use crate::ui::theme::Theme;
 pub fn pick_file() -> String {
     loop {
         let path: String = Input::new()
-            .with_prompt(format!("{}", style("ENTER PATH TO FILE").fg(Theme::INFO).bold()))
+            .with_prompt(format!("{}", style("ENTER PATH TO FILE (or press ENTER to browse)").fg(Theme::INFO).bold()))
+            .allow_empty(true)
             .interact_text()
             .unwrap_or_default();
 
-        let path = path.trim().to_string();
+        let path = path.trim().trim_matches('\'').trim_matches('"').to_string();
+
+        let path = if path.is_empty() {
+            if let Some(file) = rfd::FileDialog::new().pick_file() {
+                file.to_string_lossy().into_owned()
+            } else {
+                continue;
+            }
+        } else {
+            path
+        };
 
         if Path::new(&path).is_file() {
             // success message

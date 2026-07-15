@@ -26,3 +26,4 @@ pulldown-cmark = "0.12"
 
 # error handling
 anyhow = "1"
+rfd = "0.17.2"
