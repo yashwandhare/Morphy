@@ -24,7 +24,7 @@ const PRESETS: [Preset; 2] = [
 
 // --- entry point ---
 
-pub fn compress_pdf(path: &str) {
+pub fn compress_pdf(path: &str, args: Option<&[String]>) {
     if !validate_pdf(path) {
         return;
     }
@@ -40,12 +40,12 @@ pub fn compress_pdf(path: &str) {
 
     show_info(path, &doc, original_size);
 
-    let choice = get_compression_choice();
+    let choice = get_compression_choice(args);
 
     let output_path = match choice {
         2 => {
             // custom target size
-            let target_kb = match get_target_size() {
+            let target_kb = match get_target_size(args) {
                 Some(kb) => kb,
                 None => return,
             };
@@ -128,7 +128,17 @@ fn show_info(path: &str, doc: &mupdf::pdf::PdfDocument, size_bytes: u64) {
 
 // --- ask how to compress ---
 
-fn get_compression_choice() -> usize {
+fn get_compression_choice(args: Option<&[String]>) -> usize {
+    if let Some(args) = args {
+        if let Some(arg) = args.get(0) {
+            return match arg.to_lowercase().as_str() {
+                "standard" => 0,
+                "maximum" => 1,
+                _ => 2, // custom size
+            };
+        }
+    }
+
     println!();
     println!("{}", style("Select compression level:").fg(Theme::HEADER).bold());
 
@@ -147,12 +157,16 @@ fn get_compression_choice() -> usize {
 
 // --- ask for custom target size ---
 
-fn get_target_size() -> Option<u64> {
-    let input: String = dialoguer::Input::new()
-        .with_prompt(format!("{}", style("Enter target size in KB").fg(Theme::INFO)))
-        .default("500".to_string())
-        .interact_text()
-        .unwrap_or_default();
+fn get_target_size(args: Option<&[String]>) -> Option<u64> {
+    let input = if let Some(args) = args {
+        args.get(0).cloned().unwrap_or_else(|| "500".to_string())
+    } else {
+        dialoguer::Input::new()
+            .with_prompt(format!("{}", style("Enter target size in KB").fg(Theme::INFO)))
+            .default("500".to_string())
+            .interact_text()
+            .unwrap_or_default()
+    };
 
     let cleaned = input.to_lowercase().replace("kb", "").trim().to_string();
 

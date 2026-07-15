@@ -23,7 +23,7 @@ fn check_ffmpeg() -> bool {
 
 // --- entry point: validate, ask settings, convert ---
 
-pub fn conv_video(path: &str) {
+pub fn conv_video(path: &str, args: Option<&[String]>) {
     println!();
     println!("{}", style("VIDEO TO GIF").fg(Theme::HEADER).bold());
 
@@ -55,23 +55,31 @@ pub fn conv_video(path: &str) {
     }
 
     // get conversion settings
-    let fps_options = &["10", "24", "30"];
-    let fps_idx = Select::new()
-        .with_prompt(format!("{}", style("Select FPS").fg(Theme::HEADER)))
-        .items(fps_options)
-        .default(0)
-        .interact()
-        .unwrap_or(0);
-    let fps = fps_options[fps_idx];
+    let (fps, width) = if let Some(args) = args {
+        let f = args.get(0).map(|s| s.as_str()).unwrap_or("10");
+        let w = args.get(1).map(|s| s.as_str()).unwrap_or("480");
+        (f, w)
+    } else {
+        let fps_options = &["10", "24", "30"];
+        let fps_idx = Select::new()
+            .with_prompt(format!("{}", style("Select FPS").fg(Theme::HEADER)))
+            .items(fps_options)
+            .default(0)
+            .interact()
+            .unwrap_or(0);
+        let f = fps_options[fps_idx];
 
-    let width_options = &["320", "480", "720", "1080"];
-    let width_idx = Select::new()
-        .with_prompt(format!("{}", style("Select Width").fg(Theme::HEADER)))
-        .items(width_options)
-        .default(1)
-        .interact()
-        .unwrap_or(1);
-    let width = width_options[width_idx];
+        let width_options = &["320", "480", "720", "1080"];
+        let width_idx = Select::new()
+            .with_prompt(format!("{}", style("Select Width").fg(Theme::HEADER)))
+            .items(width_options)
+            .default(1)
+            .interact()
+            .unwrap_or(1);
+        let w = width_options[width_idx];
+        
+        (f, w)
+    };
 
     convert_to_gif(path, fps, width);
 }

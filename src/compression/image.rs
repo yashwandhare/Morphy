@@ -29,7 +29,7 @@ const VALID_EXTENSIONS: [&str; 6] = ["png", "jpg", "jpeg", "webp", "bmp", "tiff"
 
 // --- entry point ---
 
-pub fn compress_image(path: &str) {
+pub fn compress_image(path: &str, args: Option<&[String]>) {
     if !validate_image(path) {
         return;
     }
@@ -45,12 +45,12 @@ pub fn compress_image(path: &str) {
 
     show_info(path, &img, original_size);
 
-    let choice = get_compression_choice();
+    let choice = get_compression_choice(args);
 
     let output_path = match choice {
         3 => {
             // custom target size
-            let target_kb = match get_target_size() {
+            let target_kb = match get_target_size(args) {
                 Some(kb) => kb,
                 None => return,
             };
@@ -126,7 +126,18 @@ fn show_info(path: &str, img: &DynamicImage, size_bytes: u64) {
 
 // --- ask how to compress ---
 
-fn get_compression_choice() -> usize {
+fn get_compression_choice(args: Option<&[String]>) -> usize {
+    if let Some(args) = args {
+        if let Some(arg) = args.get(0) {
+            return match arg.to_lowercase().as_str() {
+                "light" => 0,
+                "medium" => 1,
+                "aggressive" => 2,
+                _ => 3, // custom size
+            };
+        }
+    }
+
     println!();
     println!("{}", style("Select compression level:").fg(Theme::HEADER).bold());
 
@@ -146,12 +157,16 @@ fn get_compression_choice() -> usize {
 
 // --- ask for custom target size ---
 
-fn get_target_size() -> Option<u64> {
-    let input: String = dialoguer::Input::new()
-        .with_prompt(format!("{}", style("Enter target size in KB").fg(Theme::INFO)))
-        .default("500".to_string())
-        .interact_text()
-        .unwrap_or_default();
+fn get_target_size(args: Option<&[String]>) -> Option<u64> {
+    let input = if let Some(args) = args {
+        args.get(0).cloned().unwrap_or_else(|| "500".to_string())
+    } else {
+        dialoguer::Input::new()
+            .with_prompt(format!("{}", style("Enter target size in KB").fg(Theme::INFO)))
+            .default("500".to_string())
+            .interact_text()
+            .unwrap_or_default()
+    };
 
     // clean up input (remove "kb" suffix, spaces)
     let cleaned = input.to_lowercase().replace("kb", "").trim().to_string();

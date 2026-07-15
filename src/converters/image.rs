@@ -11,7 +11,7 @@ use crate::ui::theme::Theme;
 
 // --- main entry: show info, ask format, convert ---
 
-pub fn conv_image(path: &str) {
+pub fn conv_image(path: &str, args: Option<&[String]>) {
     let ext = get_extension(path);
 
     // check if format is supported
@@ -55,27 +55,43 @@ pub fn conv_image(path: &str) {
     table.add_row(vec!["File size", &format!("{:.2} KB", size_kb)]);
     println!("{}", table);
 
-    // show options
-    println!();
-    println!("{}", style("CONVERT TO").fg(Theme::HEADER).bold());
+    // get target format from CLI args or prompt
+    let target_format = if let Some(args) = args {
+        if let Some(arg) = args.get(0) {
+            match arg.to_lowercase().as_str() {
+                "png" => "PNG",
+                "jpg" | "jpeg" => "JPEG",
+                "webp" => "WEBP",
+                _ => {
+                    println!("Invalid format {}. Falling back to WEBP.", arg);
+                    "WEBP"
+                }
+            }
+        } else {
+            "WEBP"
+        }
+    } else {
+        // show options
+        println!();
+        println!("{}", style("CONVERT TO").fg(Theme::HEADER).bold());
 
-    let options = &[
-        "PNG  (Lossless)",
-        "JPG  (Smaller size)",
-        "WEBP (Modern)",
-    ];
+        let options = &[
+            "PNG  (Lossless)",
+            "JPG  (Smaller size)",
+            "WEBP (Modern)",
+        ];
 
-    let selection = Select::new()
-        .items(options)
-        .default(0)
-        .interact()
-        .unwrap_or(0);
+        let selection = Select::new()
+            .items(options)
+            .default(0)
+            .interact()
+            .unwrap_or(0);
 
-    // get target format
-    let target_format = match selection {
-        0 => "PNG",
-        1 => "JPEG",
-        _ => "WEBP",
+        match selection {
+            0 => "PNG",
+            1 => "JPEG",
+            _ => "WEBP",
+        }
     };
 
     // run conversion

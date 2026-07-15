@@ -3,7 +3,7 @@
 use crate::converters;
 use crate::compression;
 
-pub type HandlerFn = fn(&str);
+pub type HandlerFn = fn(&str, Option<&[String]>);
 
 pub struct Operation {
     pub id: &'static str,

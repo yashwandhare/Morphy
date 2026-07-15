@@ -13,7 +13,7 @@ use crate::ui::theme::Theme;
 
 // --- entry point: detect direction (img→pdf or pdf→img) ---
 
-pub fn conv_doc(path: &str) {
+pub fn conv_doc(path: &str, args: Option<&[String]>) {
     // check if pdf feature is available
     if !cfg!(feature = "pdf") {
         println!(
@@ -28,27 +28,40 @@ pub fn conv_doc(path: &str) {
     }
 
     #[cfg(feature = "pdf")]
-    conv_doc_inner(path);
+    conv_doc_inner(path, args);
 }
 
 #[cfg(feature = "pdf")]
-fn conv_doc_inner(path: &str) {
+fn conv_doc_inner(path: &str, args: Option<&[String]>) {
     let ext = Path::new(path)
         .extension()
         .unwrap_or(OsStr::new(""))
         .to_string_lossy()
         .to_lowercase();
 
-    // show menu options
-    println!();
-    println!("{}", style("PDF TOOLS").fg(Theme::HEADER).bold());
+    // get selection from args or prompt
+    let selection = if let Some(args) = args {
+        if let Some(arg) = args.get(0) {
+            match arg.to_lowercase().as_str() {
+                "pdf" => 0, // Image to PDF
+                "png" | "jpg" | "images" | "img" => 1, // PDF to Images
+                _ => 0,
+            }
+        } else {
+            0
+        }
+    } else {
+        // show menu options
+        println!();
+        println!("{}", style("PDF TOOLS").fg(Theme::HEADER).bold());
 
-    let options = &["Image -> PDF", "PDF -> Images"];
-    let selection = Select::new()
-        .items(options)
-        .default(0)
-        .interact()
-        .unwrap_or(0);
+        let options = &["Image -> PDF", "PDF -> Images"];
+        Select::new()
+            .items(options)
+            .default(0)
+            .interact()
+            .unwrap_or(0)
+    };
 
     // route logic based on file type
     if selection == 0 {
@@ -57,7 +70,7 @@ fn conv_doc_inner(path: &str) {
             println!("{}", style("Invalid file. Select an image.").fg(Theme::ERROR));
             return;
         }
-        img_to_pdf(path);
+        img_to_pdf(path, args);
     } else {
         if ext != "pdf" {
             println!("{}", style("Invalid file. Select a PDF.").fg(Theme::ERROR));
@@ -70,7 +83,7 @@ fn conv_doc_inner(path: &str) {
 // --- convert an image file to a single-page pdf ---
 
 #[cfg(feature = "pdf")]
-fn img_to_pdf(path: &str) {
+fn img_to_pdf(path: &str, args: Option<&[String]>) {
     // display file stats
     let file_size = std::fs::metadata(path)
         .map(|m| m.len() as f64 / 1024.0)
@@ -86,15 +99,20 @@ fn img_to_pdf(path: &str) {
     table.add_row(vec!["Size", &format!("{:.2} KB", file_size)]);
     println!("{}", table);
 
-    // get layout choice
-    println!();
-    println!("{}", style("PAGE SIZING").fg(Theme::HEADER).bold());
-    let size_options = &["A4 Centered", "Original Fit"];
-    let size_opt = Select::new()
-        .items(size_options)
-        .default(0)
-        .interact()
-        .unwrap_or(0);
+    let size_opt = if args.is_some() {
+        // default to A4 Centered for CLI
+        0
+    } else {
+        // get layout choice
+        println!();
+        println!("{}", style("PAGE SIZING").fg(Theme::HEADER).bold());
+        let size_options = &["A4 Centered", "Original Fit"];
+        Select::new()
+            .items(size_options)
+            .default(0)
+            .interact()
+            .unwrap_or(0)
+    };
 
     println!("{}", style("Building PDF...").fg(Theme::INFO).bold());
 

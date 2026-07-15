@@ -13,7 +13,7 @@ use crate::ui::theme::Theme;
 
 // --- entry point: convert markdown to pdf ---
 
-pub fn convert_markdown_to_pdf(path: &str) {
+pub fn convert_markdown_to_pdf(path: &str, _args: Option<&[String]>) {
     let md_path = Path::new(path);
 
     // validate input
